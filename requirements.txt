@@ -1,0 +1,5 @@
+pandas
+psycopg[binary]
+Pillow
+numpy
+python-docx

@@ -1,0 +1,19 @@
+PHASE 3 - DATA QUALITY REPORT
+
+status
+PASS    9
+WARN    3
+
+                check           table status                        details
+  database_connection       movies_db   PASS        Connected to PostgreSQL
+          source_file movies_metadata   PASS                      CSV found
+       database_table movies_metadata   PASS                   Table exists
+            row_count movies_metadata   PASS          CSV=45,466; DB=45,466
+       missing_values movies_metadata   PASS                  id: 0 missing
+       missing_values movies_metadata   WARN               title: 6 missing
+duplicate_identifiers movies_metadata   WARN        id: 29 duplicate groups
+  release_date_format movies_metadata   WARN 3 dates with unexpected format
+          source_file         credits   PASS                      CSV found
+       database_table         credits   PASS                   Table exists
+            row_count         credits   PASS          CSV=45,476; DB=45,476
+       missing_values         credits   PASS                  id: 0 missing

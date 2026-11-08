@@ -1,0 +1,24 @@
+﻿check,table,status,details
+database_connection,movie_dataops,PASS,connexion en lecture seule
+database_table,movies_metadata,PASS,table présente
+source_file,movies_metadata,PASS,movies_metadata.csv
+row_count,movies_metadata,PASS,"CSV=45,466 | PostgreSQL=45,466"
+missing_values,movies_metadata,PASS,0 valeurs vides dans id
+missing_values,movies_metadata,WARN,17 valeurs vides dans imdb_id
+missing_values,movies_metadata,WARN,6 valeurs vides dans title
+missing_values,movies_metadata,WARN,87 valeurs vides dans release_date
+missing_values,movies_metadata,WARN,6 valeurs vides dans vote_average
+duplicate_identifiers,movies_metadata,WARN,29 groupes en double dans id
+duplicate_identifiers,movies_metadata,WARN,30 groupes en double dans imdb_id
+identifier_format,movies_metadata,WARN,3 identifiants TMDB mal formés
+release_date_format,movies_metadata,WARN,3 dates non valides
+rating_range,movies_metadata,PASS,"0 valeurs non numériques ou hors de [0, 10]"
+database_table,ratings_small,PASS,table présente
+source_file,ratings_small,PASS,ratings_small.csv
+row_count,ratings_small,PASS,"CSV=100,004 | PostgreSQL=100,004"
+missing_values,ratings_small,PASS,0 valeurs vides dans userId
+missing_values,ratings_small,PASS,0 valeurs vides dans movieId
+missing_values,ratings_small,PASS,0 valeurs vides dans rating
+missing_values,ratings_small,PASS,0 valeurs vides dans timestamp
+duplicate_identifiers,ratings_small,PASS,0 paires utilisateur-film en double
+rating_range,ratings_small,PASS,"0 valeurs non numériques ou hors de [0.5, 5]"
