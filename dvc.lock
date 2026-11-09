@@ -1,0 +1,305 @@
+schema: '2.0'
+stages:
+  csv_ingestion:
+    cmd: python -m src.csv_ingestion
+    deps:
+    - path: data/raw/movies_metadata.csv
+      hash: md5
+      md5: 42bf3ef8c208a01a4776955875978b1e
+      size: 34445126
+    - path: data/raw/ratings_small.csv
+      hash: md5
+      md5: 8864480f98416ccecaf17aa5263bbea1
+      size: 2438266
+    - path: requirements.txt
+      hash: md5
+      md5: 1c3dbd31b32aa6f6310333d7182e2696
+      size: 137
+    - path: src/csv_ingestion.py
+      hash: md5
+      md5: 23062ccf2fb1ab311b32f523219b73ab
+      size: 513
+    - path: src/settings.py
+      hash: md5
+      md5: 77cc4818a0366c73a1c3544431f3ba86
+      size: 758
+    params:
+      configs/params.yaml:
+        paths.interim: data/interim
+        paths.movies: data/raw/movies_metadata.csv
+        paths.ratings: data/raw/ratings_small.csv
+    outs:
+    - path: data/interim/csv_ingestion.json
+      hash: md5
+      md5: 64634be782e8f05129d4fb9835ebb099
+      size: 126
+    - path: data/interim/movies_ingested.csv
+      hash: md5
+      md5: df2e6625fcc4bdf6212a29092163c603
+      size: 34445196
+    - path: data/interim/ratings_ingested.csv
+      hash: md5
+      md5: ca345f6cdb982baf0ad30a226278c194
+      size: 2338261
+  csv_validation:
+    cmd: python -m src.csv_validation
+    deps:
+    - path: data/interim/movies_ingested.csv
+      hash: md5
+      md5: df2e6625fcc4bdf6212a29092163c603
+      size: 34445196
+    - path: data/interim/ratings_ingested.csv
+      hash: md5
+      md5: ca345f6cdb982baf0ad30a226278c194
+      size: 2338261
+    - path: src/csv_ingestion.py
+      hash: md5
+      md5: 23062ccf2fb1ab311b32f523219b73ab
+      size: 513
+    - path: src/csv_schema.py
+      hash: md5
+      md5: 4126399d1feb10ea656ff7b776d1e0ce
+      size: 420
+    - path: src/csv_validation.py
+      hash: md5
+      md5: a1a739303d79fa097d318618088772d3
+      size: 4362
+    - path: src/settings.py
+      hash: md5
+      md5: 77cc4818a0366c73a1c3544431f3ba86
+      size: 758
+    params:
+      configs/params.yaml:
+        paths.interim: data/interim
+        quality.max_duplicate_fraction: 0.005
+        quality.max_invalid_movie_fraction: 0.001
+        quality.max_invalid_rating_fraction: 0.0
+        quality.max_missing_fraction: 0.01
+        quality.min_movies: 1000
+        quality.min_ratings: 1000
+        quality.movie_rating_range:
+        - 0.0
+        - 10.0
+        quality.user_rating_range:
+        - 0.5
+        - 5.0
+    outs:
+    - path: data/interim/csv_validation.json
+      hash: md5
+      md5: 3eb1ecda4dd1709240ddd9a200cd04e6
+      size: 869
+    - path: data/interim/movies_valid.csv
+      hash: md5
+      md5: af72ed0a2d4bc4098116e2782c364f35
+      size: 34588921
+    - path: data/interim/ratings_valid.csv
+      hash: md5
+      md5: ca345f6cdb982baf0ad30a226278c194
+      size: 2338261
+  image_preprocessing:
+    cmd: python -m src.image_preprocessing
+    deps:
+    - path: data/raw/posters
+      hash: md5
+      md5: 1698554c88ba4e3b89522fd0d6f22d65.dir
+      size: 121008933
+      nfiles: 8252
+    - path: phase1_inventory.py
+      hash: md5
+      md5: 5eaec25bed547d29e43191bcb4519167
+      size: 4199
+    - path: phase4_process_images.py
+      hash: md5
+      md5: 4c1797165286909f9284f543ab3e5c61
+      size: 2389
+    - path: requirements.txt
+      hash: md5
+      md5: 1c3dbd31b32aa6f6310333d7182e2696
+      size: 137
+    - path: src/image_preprocessing.py
+      hash: md5
+      md5: 5f65c68e65a7a079493e4687da07e894
+      size: 1367
+    - path: src/settings.py
+      hash: md5
+      md5: 77cc4818a0366c73a1c3544431f3ba86
+      size: 758
+    params:
+      configs/params.yaml:
+        images.height: 224
+        images.sample_size: 0
+        images.seed: 42
+        images.width: 224
+        paths.interim: data/interim
+        paths.posters: data/raw/posters
+    outs:
+    - path: data/interim/image_preprocessing.json
+      hash: md5
+      md5: 1ab6fc8037b8dd12885b555701f7cf2f
+      size: 89
+    - path: data/interim/posters_preprocessed.csv
+      hash: md5
+      md5: ce5177e92976e71f0b371e0ea83d00a9
+      size: 811338
+    - path: data/interim/posters_unreadable.csv
+      hash: md5
+      md5: 3c98f09c669c37e4a7181b2f3b830fb2
+      size: 18
+  image_validation:
+    cmd: python -m src.image_validation
+    deps:
+    - path: data/interim/posters_preprocessed.csv
+      hash: md5
+      md5: ce5177e92976e71f0b371e0ea83d00a9
+      size: 811338
+    - path: data/interim/posters_unreadable.csv
+      hash: md5
+      md5: 3c98f09c669c37e4a7181b2f3b830fb2
+      size: 18
+    - path: src/csv_ingestion.py
+      hash: md5
+      md5: 23062ccf2fb1ab311b32f523219b73ab
+      size: 513
+    - path: src/image_preprocessing.py
+      hash: md5
+      md5: 5f65c68e65a7a079493e4687da07e894
+      size: 1367
+    - path: src/image_validation.py
+      hash: md5
+      md5: ff117968806202333daa89356795e0a0
+      size: 2289
+    - path: src/settings.py
+      hash: md5
+      md5: 77cc4818a0366c73a1c3544431f3ba86
+      size: 758
+    params:
+      configs/params.yaml:
+        images.height: 224
+        images.width: 224
+        paths.interim: data/interim
+        quality.max_invalid_image_fraction: 0.02
+        quality.min_valid_images: 1
+    outs:
+    - path: data/interim/image_validation.json
+      hash: md5
+      md5: 864c3f63fd33d506b63c664dc025f488
+      size: 137
+    - path: data/interim/posters_rejected.csv
+      hash: md5
+      md5: 3c98f09c669c37e4a7181b2f3b830fb2
+      size: 18
+    - path: data/interim/posters_valid.csv
+      hash: md5
+      md5: ce5177e92976e71f0b371e0ea83d00a9
+      size: 811338
+  alignment:
+    cmd: python -m src.alignment
+    deps:
+    - path: data/interim/movies_valid.csv
+      hash: md5
+      md5: af72ed0a2d4bc4098116e2782c364f35
+      size: 34588921
+    - path: data/interim/posters_valid.csv
+      hash: md5
+      md5: ce5177e92976e71f0b371e0ea83d00a9
+      size: 811338
+    - path: phase1_inventory.py
+      hash: md5
+      md5: 5eaec25bed547d29e43191bcb4519167
+      size: 4199
+    - path: src/alignment.py
+      hash: md5
+      md5: c650213cc85516f05e5f9df3ef3b19d4
+      size: 1458
+    - path: src/csv_ingestion.py
+      hash: md5
+      md5: 23062ccf2fb1ab311b32f523219b73ab
+      size: 513
+    - path: src/settings.py
+      hash: md5
+      md5: 77cc4818a0366c73a1c3544431f3ba86
+      size: 758
+    params:
+      configs/params.yaml:
+        paths.interim: data/interim
+    outs:
+    - path: data/interim/alignment.json
+      hash: md5
+      md5: 4e2b4b4dc4638754b84a92e123b6870e
+      size: 212
+    - path: data/interim/posters_aligned.csv
+      hash: md5
+      md5: 96a9d0b8727517e9f2d5bf3d61c91a7b
+      size: 1130903
+  export:
+    cmd: python -m src.export_dataset
+    deps:
+    - path: data/interim/alignment.json
+      hash: md5
+      md5: 4e2b4b4dc4638754b84a92e123b6870e
+      size: 212
+    - path: data/interim/csv_ingestion.json
+      hash: md5
+      md5: 64634be782e8f05129d4fb9835ebb099
+      size: 126
+    - path: data/interim/csv_validation.json
+      hash: md5
+      md5: 3eb1ecda4dd1709240ddd9a200cd04e6
+      size: 869
+    - path: data/interim/image_preprocessing.json
+      hash: md5
+      md5: 1ab6fc8037b8dd12885b555701f7cf2f
+      size: 89
+    - path: data/interim/image_validation.json
+      hash: md5
+      md5: 864c3f63fd33d506b63c664dc025f488
+      size: 137
+    - path: data/interim/movies_valid.csv
+      hash: md5
+      md5: af72ed0a2d4bc4098116e2782c364f35
+      size: 34588921
+    - path: data/interim/posters_aligned.csv
+      hash: md5
+      md5: 96a9d0b8727517e9f2d5bf3d61c91a7b
+      size: 1130903
+    - path: data/interim/ratings_valid.csv
+      hash: md5
+      md5: ca345f6cdb982baf0ad30a226278c194
+      size: 2338261
+    - path: src/csv_ingestion.py
+      hash: md5
+      md5: 23062ccf2fb1ab311b32f523219b73ab
+      size: 513
+    - path: src/export_dataset.py
+      hash: md5
+      md5: b6a7051993b74bfafe2c0b3ae4438c99
+      size: 2222
+    - path: src/settings.py
+      hash: md5
+      md5: 77cc4818a0366c73a1c3544431f3ba86
+      size: 758
+    params:
+      configs/params.yaml:
+        paths.interim: data/interim
+        paths.processed: data/processed
+    outs:
+    - path: data/interim/export.json
+      hash: md5
+      md5: 2fedd2cce8f4c6dfadf9ba49b4e76af7
+      size: 437
+    - path: data/processed/movies_multimodal.csv
+      hash: md5
+      md5: 82c123c0a3c26f92c0d90b27b0899b4c
+      size: 36103556
+    - path: data/processed/poster_features.csv
+      hash: md5
+      md5: 96a9d0b8727517e9f2d5bf3d61c91a7b
+      size: 1130903
+    - path: data/processed/ratings_prepared.csv
+      hash: md5
+      md5: ca345f6cdb982baf0ad30a226278c194
+      size: 2338261
+    - path: data/processed/statistics.json
+      hash: md5
+      md5: 28f3d84d31d4de60db99788d136bb7cf
+      size: 2182

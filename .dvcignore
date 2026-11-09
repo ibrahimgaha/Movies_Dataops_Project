@@ -1,0 +1,7 @@
+# Le stockage local et les fichiers temporaires ne sont pas des entrées.
+.dvc-storage/
+.movies-demo-*/
+.venv/
+__pycache__/
+.pytest_cache/
+.ruff_cache/

@@ -1,97 +1,136 @@
-# Projet DataOps sur les films
+# Films et affiches · Pipeline DataOps
 
-Le pipeline part de deux CSV et d’une collection d’affiches JPEG. Il charge les valeurs brutes dans PostgreSQL, contrôle leur qualité, extrait trois moyennes de couleur par affiche et rattache les affiches aux films grâce aux identifiants IMDb.
+La Partie A prépare des métadonnées de films et des affiches pour un futur projet multimodal. Une commande DVC valide les données, calcule les caractéristiques RGB et relie les modalités par identifiant IMDb. PostgreSQL reste disponible pour les exercices de la Tâche 2.
 
-## Relancer sous PowerShell
+## Installation sous PowerShell
 
-Depuis le dossier du projet, exécuter les commandes ci-dessous. Elles utilisent l’instance PostgreSQL locale créée pour le projet. Le fichier d’authentification est conservé dans le profil Windows, hors du dossier du projet.
+Ouvrir PowerShell à la racine du dépôt avec Python 3.14 et Git installés.
 
 ```powershell
+python -m venv .venv
+$env:Path = "$(Join-Path $PWD '.venv/Scripts');$env:Path"
 python -m pip install -r requirements.txt
-if ($LASTEXITCODE -ne 0) { throw 'Installation des bibliothèques interrompue.' }
-
-$instance = Join-Path $env:LOCALAPPDATA 'MovieDataOps-01a1bcdc'
-pg_ctl -D "$instance/pgdata" status
-if ($LASTEXITCODE -ne 0) {
-    pg_ctl -D "$instance/pgdata" -l "$instance/postgresql.log" -o "-h 127.0.0.1 -p 55432" -w start
-    if ($LASTEXITCODE -ne 0) { throw 'Démarrage de PostgreSQL interrompu.' }
-}
-$env:PGHOST = '127.0.0.1'
-$env:PGPORT = '55432'
-$env:PGUSER = 'dataops'
-$env:PGDATABASE = 'movies_dataops'
-$env:PGPASSFILE = Join-Path $instance 'pgpass.conf'
-Remove-Item Env:PGPASSWORD -ErrorAction SilentlyContinue
-
-foreach ($script in 'phase1_inventory.py', 'phase2_ingestion.py', 'phase3_validation.py',
-                    'phase3_cleaning.py', 'phase4_process_images.py', 'phase5_integration.py') {
-    python $script
-    if ($LASTEXITCODE -ne 0) { throw "Échec de $script" }
-}
 ```
 
-Sur une autre machine, utiliser une base PostgreSQL déjà créée et un compte autorisé à y créer le schéma `movie_dataops`. Adapter `PGHOST`, `PGPORT`, `PGUSER`, `PGDATABASE` et `PGPASSFILE` ou fournir `PGPASSWORD` dans la session PowerShell, puis exécuter les mêmes scripts.
+Les versions directes sont fixées dans `requirements.txt`. Réexécuter la ligne qui modifie `Path` à l’ouverture d’une nouvelle session PowerShell.
 
-## Nettoyer les données après la validation
+## Récupérer les données
 
-Exécuter `python phase3_cleaning.py` après `python phase3_validation.py`, dans la même session PowerShell. Le nettoyage crée `movie_dataops.movies_metadata_clean` et `movie_dataops.ratings_small_clean` et conserve les tables brutes.
-
-Le script écarte les lignes contenant une valeur vide dans une colonne contrôlée en phase 3. Il conserve une seule ligne par identifiant TMDB puis par identifiant IMDb, et une seule note par paire utilisateur-film. Les copies déjà présentes sont conservées lors d’une relance.
-
-## Lire les résultats
-
-| Phase | Opération | Résultat vérifié |
-| --- | --- | --- |
-| 1 | Recenser les fichiers CSV et identifier le format des affiches. | 2 CSV et 8 252 JPEG. |
-| 2 | Copier les CSV par blocs de 10 000 lignes vers PostgreSQL. | 45 466 métadonnées et 100 004 notes. |
-| 3 | Comparer les volumes et contrôler les valeurs en lecture seule. | 15 PASS, 8 WARN et 0 FAIL. |
-| 4 | Convertir 100 affiches en RGB, les redimensionner à 224 × 224 et calculer les moyennes. | 100 lignes exportées et 0 image illisible dans l’échantillon. |
-| 5 | Insérer les caractéristiques et rapprocher les identifiants IMDb. | 99 affiches liées et 1 non liée sur 100. |
-
-La phase 2 conserve les tables déjà chargées. Pour importer une autre version des CSV, exécuter la phase 2 dans une nouvelle base dédiée. La phase 5 conserve une seule ligne par chemin d’image. Elle laisse `movie_id` à `NULL` si le rapprochement est absent ou ambigu. Les rapports Word documentent l’exécution vérifiée et les scripts régénèrent les inventaires et les CSV de résultats.
-
-Pour vérifier les volumes directement dans PostgreSQL, exécuter les requêtes suivantes avec les mêmes variables d’environnement.
+Sur la machine du projet, les données sont déjà dans `data/raw/` et le stockage de démonstration est `.dvc-storage/`. Après réception de la révision Partie A par Git et obtention de l’accès au stockage de données, un autre étudiant peut cloner la version publiée, installer les dépendances puis récupérer les fichiers.
 
 ```powershell
-@'
-SELECT COUNT(*) FROM movie_dataops.movies_metadata;
-SELECT COUNT(*) FROM movie_dataops.ratings_small;
-SELECT match_status, COUNT(*)
-FROM movie_dataops.movie_posters
-GROUP BY match_status
-ORDER BY match_status;
-'@ | psql -w -v ON_ERROR_STOP=1
+git clone --depth 1 --branch task3-partie-a https://github.com/ibrahimgaha/Movies_Dataops_Project.git
+Set-Location Movies_Dataops_Project
+# Exécuter les commandes d’installation ci-dessus.
+dvc remote add --local -d partage '\\serveur\equipe\movies-dvc'
+dvc pull
 ```
 
-## Structure du projet
+Remplacer le chemin UNC par le dossier DVC autorisé de l’équipe. Pour un partage local, on peut aussi copier le dossier de démonstration `.dvc-storage/` à la racine du nouveau clone et exécuter `dvc pull -r demonstration`. Un stockage partagé reçoit les objets par `dvc push -r partage` quand l’équipe dispose des droits de diffusion. Les identifiants du stockage restent dans la configuration locale.
+
+En l’absence de stockage partagé, récupérer les versions exactes des deux CSV et des affiches indiquées dans la [fiche de données](DATA_CARD.md), les placer selon l’arborescence ci-dessous et contrôler leur identité avec `dvc status data/raw.dvc`. Les archives d’origine peuvent avoir un nom ou une structure de dossiers différents.
+
+La révision Partie A et son tag sont locaux en attendant l’autorisation de publication. Le stockage de démonstration est local. Le commit Git initial contient encore les anciennes données dans son historique, tandis que la révision Partie A suit les données brutes et préparées avec DVC. Un clone superficiel du tag, une fois publié, évite de télécharger l’ancien commit.
+
+## Exécuter la préparation
+
+```powershell
+$env:DVC_SITE_CACHE_DIR = Join-Path $PWD '.dvc/tmp/site-cache'
+dvc repro
+dvc status
+dvc repro
+```
+
+La dernière commande doit indiquer que le pipeline est à jour. Dans `configs/params.yaml`, `images.sample_size: 0` traite toutes les affiches. Une valeur positive tire un échantillon reproductible avec la graine 42. Pour déplacer une entrée ou une sortie, mettre à jour son chemin dans le YAML des paramètres et dans `dvc.yaml`.
+
+| Étape | Entrée | Résultat |
+| --- | --- | --- |
+| Ingestion CSV | Deux CSV bruts | Copies tabulaires et volumes |
+| Validation CSV | Copies tabulaires | Films et notes valides, statistiques et seuils |
+| Prétraitement des affiches | Fichiers JPEG | Dimensions originales, dimensions RGB 224 × 224 et moyennes par canal |
+| Validation des affiches | Caractéristiques et erreurs de lecture | Affiches valides et liste des rejets |
+| Alignement | Films et affiches valides | Identifiants IMDb uniques, état et motif du rapprochement |
+| Export | Modalités alignées et journaux | Quatre fichiers dans `data/processed/` |
+
+Le traitement garde les fichiers d’origine. Les anomalies tolérées sont écartées des sorties préparées. Une colonne obligatoire absente, un volume insuffisant ou un seuil dépassé fait échouer DVC. Les fichiers `data/interim/*.json` sont les journaux des étapes et `data/processed/statistics.json` les rassemble avec des distributions.
+
+## Tester et démontrer
+
+```powershell
+$pythonFiles = (Get-ChildItem -File -Filter '*.py').Name
+python -m ruff check --select E9,F src tests $pythonFiles
+python -m pytest -q
+python -m tests.demo_pipeline
+```
+
+La démonstration crée une copie temporaire avec trois films, deux notes et quatre images. Elle exécute DVC, vérifie que la relance est à jour, change uniquement la largeur des images et vérifie que les étapes CSV sont ignorées. Elle injecte ensuite une note de 9 sur 5, vérifie l’arrêt du pipeline et restaure les entrées valides. Le workflow GitHub Actions reprend ces contrôles sur un jeu synthétique sans PostgreSQL.
+
+## Consulter les sorties
+
+- `movies_multimodal.csv` contient une ligne par film préparé, les caractéristiques de l’affiche retenue et le booléen `has_poster`. Si plusieurs affiches valides correspondent, le premier chemin par ordre alphabétique est retenu.
+- `poster_features.csv` conserve toutes les affiches valides et leur statut `matched` ou `unmatched`, avec un motif. Un rapprochement exige un identifiant IMDb non ambigu dans le CSV brut.
+- `ratings_prepared.csv` contient les notes MovieLens validées. Leurs identifiants appartiennent à MovieLens et restent distincts des identifiants TMDB.
+- `statistics.json` résume les volumes, champs manquants, doublons, rejets, images et liens. Les chemins d’images dans les CSV sont relatifs au dépôt.
+
+## PostgreSQL pour la Tâche 2
+
+Le pipeline DVC utilise les fichiers. Pour reprendre les exercices PostgreSQL, utiliser une base existante et renseigner les valeurs du serveur dans PowerShell. Le schéma, le port par défaut et la taille des blocs sont dans `configs/params.yaml`.
+
+```powershell
+$env:PGHOST = 'localhost'
+$env:PGPORT = '5432'
+$env:PGDATABASE = 'movies_dataops'
+$env:PGUSER = 'postgres'
+```
+
+Utiliser un fichier `PGPASSFILE` hors du dépôt ou saisir le mot de passe avec la commande suivante, à exécuter seule.
+
+```powershell
+$password = Read-Host 'Mot de passe PostgreSQL' -AsSecureString
+```
+
+```powershell
+$env:PGPASSWORD = [System.Net.NetworkCredential]::new('', $password).Password
+python phase2_ingestion.py
+python phase3_validation.py
+python phase3_cleaning.py
+python phase4_process_images.py
+python phase5_integration.py
+Remove-Item Env:PGPASSWORD
+```
+
+Ces scripts restent indépendants de DVC et régénèrent les rapports CSV de la Tâche 2. Leur intégration d’affiches porte sur l’échantillon historique de 100. Pour consulter l’intégralité du nouveau jeu préparé, utiliser les sorties DVC.
+
+## Arborescence
 
 ```text
-Movies_DB/
-├── README.md
-├── requirements.txt
-├── phase1_inventory.py
-├── phase2_ingestion.py
-├── phase3_validation.py
-├── phase3_cleaning.py
-├── phase4_process_images.py
-├── phase5_integration.py
-├── load_data.py                  ancien point d’entrée de la phase 2
-├── validate_Data.py              ancien point d’entrée de la phase 3
-├── data/
-│   ├── Raw/
-│   │   ├── movies_metadata.csv
-│   │   └── ratings_small.csv
-│   └── images/
-│       └── poster_downloads/     8 252 fichiers JPG
-└── reports/
-    ├── dataset_inventory.md
-    ├── poster_inventory.csv
-    ├── phase3_quality_report.csv
-    ├── poster_features.csv
-    ├── Phase1_Data_Collection.docx
-    ├── Phase2_Data_Ingestion.docx
-    ├── Phase3_Data_Quality.docx
-    ├── Phase4_Image_Processing.docx
-    ├── Phase5_Data_Integration.docx
-    └── legacy/                  rapports de validation précédents
+configs/params.yaml
+data/
+  raw.dvc
+  raw/
+    movies_metadata.csv
+    ratings_small.csv
+    posters/
+  interim/
+  processed/
+src/
+  settings.py
+  csv_schema.py
+  csv_ingestion.py
+  csv_validation.py
+  image_preprocessing.py
+  image_validation.py
+  alignment.py
+  export_dataset.py
+  future/README.md
+tests/
+reports/
+.github/workflows/ci.yml
+.dvc/config
+dvc.yaml
+dvc.lock
+requirements.txt
+DATA_CARD.md
 ```
+
+Les scripts des phases précédentes restent à la racine et leurs rapports restent dans `reports/`. Le [plan des futures étapes](src/future/README.md) réserve les interfaces d’extraction, de fusion, d’entraînement, d’évaluation et de suivi MLflow. Les découpages train, validation et test seront définis avec la tâche d’apprentissage.

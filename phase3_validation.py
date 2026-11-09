@@ -1,16 +1,9 @@
-from datetime import date
-import re
-
 import pandas as pd
 from psycopg import Error, sql
 
-from phase2_ingestion import REPORT_DIR, SCHEMA, SOURCE_DIR, TABLES, connect
-
-
-IMPORTANT = {
-    "movies_metadata": ["id", "imdb_id", "title", "release_date", "vote_average"],
-    "ratings_small": ["userId", "movieId", "rating", "timestamp"],
-}
+from phase2_ingestion import POSTGRES, REPORT_DIR, SCHEMA, SOURCES, TABLES, connect
+from src.csv_schema import IMPORTANT, valid_date
+from src.settings import PARAMS
 
 
 def record(results, check, table, status, details):
@@ -28,22 +21,12 @@ def duplicate_groups(data, columns):
     return len(present[present.duplicated()].drop_duplicates())
 
 
-def valid_date(value):
-    if not re.fullmatch(r"[0-9]{4}-[0-9]{2}-[0-9]{2}", value):
-        return False
-    try:
-        date.fromisoformat(value)
-        return True
-    except ValueError:
-        return False
-
-
 def validate_table(cursor, table, results):
     cursor.execute("SELECT to_regclass(%s)", (f"{SCHEMA}.{table}",))
     exists = cursor.fetchone()[0] is not None
     record(results, "database_table", table, "PASS" if exists else "FAIL",
            "table présente" if exists else "table introuvable")
-    path = SOURCE_DIR / f"{table}.csv"
+    path = SOURCES[table]
     source_exists = path.is_file()
     record(results, "source_file", table, "PASS" if source_exists else "FAIL", path.name)
     if not exists:
@@ -53,7 +36,7 @@ def validate_table(cursor, table, results):
     cursor.execute(sql.SQL("SELECT COUNT(*) FROM {}").format(name))
     database_count = cursor.fetchone()[0]
     if source_exists:
-        with pd.read_csv(path, dtype=str, keep_default_na=False, chunksize=10_000) as chunks:
+        with pd.read_csv(path, dtype=str, keep_default_na=False, chunksize=POSTGRES["chunk_size"]) as chunks:
             source_count = sum(len(chunk) for chunk in chunks)
         record(results, "row_count", table, "PASS" if source_count == database_count else "FAIL",
                f"CSV={source_count:,} | PostgreSQL={database_count:,}")
@@ -78,11 +61,13 @@ def validate_table(cursor, table, results):
         warn_if(results, "identifier_format", table, (~ids.str.fullmatch(r"[0-9]+")).sum(), "identifiants TMDB mal formés")
         dates = data.loc[data["release_date"].ne(""), "release_date"]
         warn_if(results, "release_date_format", table, (~dates.map(valid_date).astype(bool)).sum(), "dates non valides")
-        rating_column, minimum, maximum = "vote_average", 0, 10
+        rating_column = "vote_average"
+        minimum, maximum = PARAMS["quality"]["movie_rating_range"]
     else:
         count = duplicate_groups(data, ["userId", "movieId"])
         warn_if(results, "duplicate_identifiers", table, count, "paires utilisateur-film en double")
-        rating_column, minimum, maximum = "rating", 0.5, 5
+        rating_column = "rating"
+        minimum, maximum = PARAMS["quality"]["user_rating_range"]
 
     values = pd.to_numeric(data.loc[data[rating_column].ne(""), rating_column], errors="coerce")
     warn_if(results, "rating_range", table, (~values.between(minimum, maximum)).sum(),

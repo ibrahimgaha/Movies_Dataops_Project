@@ -9,3 +9,10 @@ pgsecret
 pgdata/
 *.log
 ~$*.docx
+.pytest_cache/
+.ruff_cache/
+.dvc-storage/
+.movies-demo-*/
+/data/raw/
+/data/interim/
+/data/processed/

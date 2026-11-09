@@ -1,0 +1,101 @@
+stages:
+  csv_ingestion:
+    cmd: python -m src.csv_ingestion
+    deps:
+      - src/settings.py
+      - src/csv_ingestion.py
+      - requirements.txt
+      - data/raw/movies_metadata.csv
+      - data/raw/ratings_small.csv
+    params:
+      - configs/params.yaml: [paths.movies, paths.ratings, paths.interim]
+    outs:
+      - data/interim/movies_ingested.csv
+      - data/interim/ratings_ingested.csv
+      - data/interim/csv_ingestion.json
+
+  csv_validation:
+    cmd: python -m src.csv_validation
+    deps:
+      - src/settings.py
+      - src/csv_ingestion.py
+      - src/csv_validation.py
+      - src/csv_schema.py
+      - data/interim/movies_ingested.csv
+      - data/interim/ratings_ingested.csv
+    params:
+      - configs/params.yaml: [paths.interim, quality.min_movies, quality.min_ratings, quality.max_missing_fraction, quality.max_duplicate_fraction, quality.max_invalid_movie_fraction, quality.max_invalid_rating_fraction, quality.movie_rating_range, quality.user_rating_range]
+    outs:
+      - data/interim/movies_valid.csv
+      - data/interim/ratings_valid.csv
+      - data/interim/csv_validation.json
+
+  image_preprocessing:
+    cmd: python -m src.image_preprocessing
+    deps:
+      - src/settings.py
+      - src/image_preprocessing.py
+      - phase1_inventory.py
+      - phase4_process_images.py
+      - requirements.txt
+      - data/raw/posters
+    params:
+      - configs/params.yaml: [paths.posters, paths.interim, images.width, images.height, images.sample_size, images.seed]
+    outs:
+      - data/interim/posters_preprocessed.csv
+      - data/interim/posters_unreadable.csv
+      - data/interim/image_preprocessing.json
+
+  image_validation:
+    cmd: python -m src.image_validation
+    deps:
+      - src/settings.py
+      - src/csv_ingestion.py
+      - src/image_preprocessing.py
+      - src/image_validation.py
+      - data/interim/posters_preprocessed.csv
+      - data/interim/posters_unreadable.csv
+    params:
+      - configs/params.yaml: [paths.interim, images.width, images.height, quality.min_valid_images, quality.max_invalid_image_fraction]
+    outs:
+      - data/interim/posters_valid.csv
+      - data/interim/posters_rejected.csv
+      - data/interim/image_validation.json
+
+  alignment:
+    cmd: python -m src.alignment
+    deps:
+      - src/settings.py
+      - src/csv_ingestion.py
+      - src/alignment.py
+      - phase1_inventory.py
+      - data/interim/movies_valid.csv
+      - data/interim/posters_valid.csv
+    params:
+      - configs/params.yaml: [paths.interim]
+    outs:
+      - data/interim/posters_aligned.csv
+      - data/interim/alignment.json
+
+  export:
+    cmd: python -m src.export_dataset
+    deps:
+      - src/settings.py
+      - src/csv_ingestion.py
+      - src/export_dataset.py
+      - data/interim/movies_valid.csv
+      - data/interim/ratings_valid.csv
+      - data/interim/posters_aligned.csv
+      - data/interim/csv_ingestion.json
+      - data/interim/csv_validation.json
+      - data/interim/image_preprocessing.json
+      - data/interim/image_validation.json
+      - data/interim/alignment.json
+    params:
+      - configs/params.yaml: [paths.interim, paths.processed]
+    outs:
+      - data/processed/movies_multimodal.csv
+      - data/processed/poster_features.csv
+      - data/processed/ratings_prepared.csv
+      - data/processed/statistics.json
+      - data/interim/export.json

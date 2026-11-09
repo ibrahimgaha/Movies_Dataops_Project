@@ -4,7 +4,8 @@ import random
 import numpy as np
 from PIL import Image
 
-from phase1_inventory import ROOT, poster_paths
+from phase1_inventory import poster_paths
+from src.settings import PARAMS, ROOT, path_for
 
 
 FIELDS = [
@@ -14,11 +15,13 @@ FIELDS = [
 
 
 def extract_features(path):
+    images = PARAMS["images"]
     with Image.open(path) as image:
         width, height = image.size
         image_format = image.format
         # Standardiser les couleurs et les dimensions avant de mesurer les pixels.
-        resized = image.convert("RGB").resize((224, 224), Image.Resampling.BILINEAR)
+        size = (images["width"], images["height"])
+        resized = image.convert("RGB").resize(size, Image.Resampling.BILINEAR)
         pixels = np.asarray(resized)
         red, green, blue = pixels.mean(axis=(0, 1))
     return {
@@ -31,15 +34,19 @@ def extract_features(path):
         "avg_red": round(float(red), 3),
         "avg_green": round(float(green), 3),
         "avg_blue": round(float(blue), 3),
+        "processed_width": pixels.shape[1],
+        "processed_height": pixels.shape[0],
+        "channels": pixels.shape[2],
     }
 
 
 def main():
     paths = poster_paths()
     if not paths:
-        raise SystemExit("Aucune affiche trouvée dans data/images.")
+        raise SystemExit(f"Aucune affiche trouvée dans {path_for('posters')}.")
     # La graine fixe produit le même échantillon à chaque relance.
-    sample = random.Random(42).sample(paths, min(100, len(paths)))
+    images = PARAMS["images"]
+    sample = random.Random(images["seed"]).sample(paths, min(images["legacy_sample_size"], len(paths)))
     rows = []
     for path in sorted(sample):
         try:
@@ -49,9 +56,9 @@ def main():
     if not rows:
         raise SystemExit("Aucune image de l’échantillon n’a pu être lue.")
 
-    output = ROOT / "reports" / "poster_features.csv"
+    output = path_for("reports") / "poster_features.csv"
     with output.open("w", newline="", encoding="utf-8") as file:
-        writer = csv.DictWriter(file, fieldnames=FIELDS)
+        writer = csv.DictWriter(file, fieldnames=FIELDS, extrasaction="ignore")
         writer.writeheader()
         writer.writerows(rows)
     print(f"Disponibles : {len(paths):,} | Sélectionnées : {len(sample)} | "

@@ -1,0 +1,35 @@
+paths:
+  movies: data/raw/movies_metadata.csv
+  ratings: data/raw/ratings_small.csv
+  posters: data/raw/posters
+  legacy_posters: data/images/poster_downloads
+  interim: data/interim
+  processed: data/processed
+  reports: reports
+
+images:
+  width: 224
+  height: 224
+  seed: 42
+  sample_size: 0        # 0 traite toutes les affiches
+  test_sample_size: 4
+  legacy_sample_size: 100
+
+quality:
+  min_movies: 1000
+  min_ratings: 1000
+  min_valid_images: 1
+  max_missing_fraction: 0.01
+  max_duplicate_fraction: 0.005
+  max_invalid_movie_fraction: 0.001
+  max_invalid_rating_fraction: 0.0
+  max_invalid_image_fraction: 0.02
+  movie_rating_range: [0.0, 10.0]
+  user_rating_range: [0.5, 5.0]
+
+postgres:
+  host: localhost
+  port: 5432
+  schema: movie_dataops
+  connect_timeout: 5
+  chunk_size: 10000

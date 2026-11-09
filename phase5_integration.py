@@ -1,5 +1,6 @@
 from collections import Counter
 from hashlib import sha256
+from pathlib import PurePosixPath
 import re
 
 import pandas as pd
@@ -8,6 +9,7 @@ from psycopg import sql
 from phase1_inventory import poster_imdb_id
 from phase2_ingestion import REPORT_DIR, SCHEMA, TABLES, connect
 from phase4_process_images import FIELDS
+from src.settings import PARAMS
 
 
 def table_fingerprint(cursor, table):
@@ -33,6 +35,23 @@ def movie_lookup(cursor):
         imdb_id: movie_id for movie_id, imdb_id in rows
         if movie_id and re.fullmatch(r"[0-9]+", movie_id) and tmdb_counts[movie_id] == 1
         and imdb_id and imdb_counts[imdb_id] == 1
+    }
+
+
+def stored_paths(cursor, name, current_paths):
+    # Une affiche déjà importée peut encore porter son ancien chemin PostgreSQL.
+    folder = PurePosixPath(PARAMS["paths"]["posters"])
+    legacy = PurePosixPath(PARAMS["paths"]["legacy_posters"])
+    aliases = {
+        path: (legacy / PurePosixPath(path).relative_to(folder)).as_posix()
+        for path in current_paths if PurePosixPath(path).is_relative_to(folder)
+    }
+    cursor.execute(sql.SQL("SELECT image_path FROM {} WHERE image_path = ANY(%s)").format(name),
+                   ([*current_paths, *aliases.values()],))
+    existing = {row[0] for row in cursor.fetchall()}
+    return {
+        path: aliases[path] for path in aliases
+        if path not in existing and aliases[path] in existing
     }
 
 
@@ -70,6 +89,8 @@ def main():
                     OR (match_status = 'unmatched' AND movie_id IS NULL))
             )
         """).format(name))
+        aliases = stored_paths(cursor, name, features["image_path"].tolist())
+        features["image_path"] = features["image_path"].replace(aliases)
         rows = []
         for feature in features.itertuples(index=False, name=None):
             imdb_id = poster_imdb_id(feature[0])

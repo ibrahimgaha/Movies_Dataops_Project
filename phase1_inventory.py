@@ -6,13 +6,13 @@ import re
 import pandas as pd
 from PIL import Image
 
+from src.settings import ROOT, path_for
 
-ROOT = Path(__file__).resolve().parent
 IMAGE_EXTENSIONS = {".jpg", ".jpeg", ".png", ".webp", ".bmp", ".gif", ".tif", ".tiff"}
 
 
 def poster_paths():
-    folder = ROOT / "data" / "images"
+    folder = path_for("posters")
     return sorted(
         path for path in folder.rglob("*")
         if path.is_file() and path.suffix.lower() in IMAGE_EXTENSIONS
@@ -27,7 +27,7 @@ def poster_imdb_id(filename):
 
 def main():
     lines = ["# Inventaire des données", "", "## Fichiers CSV", ""]
-    for path in sorted((ROOT / "data" / "Raw").glob("*.csv")):
+    for path in (path_for("movies"), path_for("ratings")):
         data = pd.read_csv(path, dtype=str, keep_default_na=False)
         lines.extend([
             f"- `{path.relative_to(ROOT).as_posix()}` — CSV, "
@@ -35,7 +35,7 @@ def main():
             "  Colonnes : " + ", ".join(f"`{column}`" for column in data.columns) + ".",
         ])
 
-    movies = pd.read_csv(ROOT / "data/Raw/movies_metadata.csv", dtype=str, keep_default_na=False)
+    movies = pd.read_csv(path_for("movies"), dtype=str, keep_default_na=False)
     tmdb_ids = set(movies["id"])
     imdb_ids = set(movies["imdb_id"])
     poster_names = {Path(value).name for value in movies["poster_path"] if value}
@@ -58,7 +58,7 @@ def main():
 
     lines.extend([
         "", "## Affiches", "",
-        f"- `data/images/poster_downloads/` — {len(paths):,} fichiers, "
+        f"- `{path_for('posters').relative_to(ROOT).as_posix()}/` — {len(paths):,} fichiers, "
         f"{sum(row[3] for row in image_rows):,} octets.",
         "- Formats détectés : " + ", ".join(f"{name} ({count:,})" for name, count in formats.items()) + ".",
         "- Exemples : " + ", ".join(f"`{path.name}` ({path.stat().st_size:,} octets)" for path in paths[:3]) + ".",
@@ -78,12 +78,12 @@ def main():
         f"- Noms de fichiers présents dans `poster_path` : "
         f"{sum(path.name in poster_names for path in paths):,}.",
     ])
-    with (ROOT / "reports/poster_inventory.csv").open("w", encoding="utf-8", newline="") as file:
+    with (path_for("reports") / "poster_inventory.csv").open("w", encoding="utf-8", newline="") as file:
         writer = csv.writer(file)
         writer.writerow(["filename", "image_path", "format", "size_bytes"])
         writer.writerows(image_rows)
     result = "\n".join(lines) + "\n"
-    (ROOT / "reports/dataset_inventory.md").write_text(result, encoding="utf-8")
+    (path_for("reports") / "dataset_inventory.md").write_text(result, encoding="utf-8")
     print(result)
 
 

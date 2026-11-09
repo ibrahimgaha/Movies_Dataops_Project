@@ -2,7 +2,7 @@ import pandas as pd
 from psycopg import sql
 
 from phase2_ingestion import SCHEMA, TABLES, connect
-from phase3_validation import IMPORTANT
+from src.csv_schema import IMPORTANT
 
 
 DUPLICATE_KEYS = {

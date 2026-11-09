@@ -1,15 +1,15 @@
 import os
-from pathlib import Path
 
 import pandas as pd
 import psycopg
 from psycopg import sql
 
+from src.settings import PARAMS, path_for
 
-ROOT = Path(__file__).resolve().parent
-SOURCE_DIR = ROOT / "data" / "Raw"
-REPORT_DIR = ROOT / "reports"
-SCHEMA = "movie_dataops"
+SOURCES = {"movies_metadata": path_for("movies"), "ratings_small": path_for("ratings")}
+REPORT_DIR = path_for("reports")
+POSTGRES = PARAMS["postgres"]
+SCHEMA = POSTGRES["schema"]
 TABLES = ("movies_metadata", "ratings_small")
 
 
@@ -17,11 +17,15 @@ def connect():
     # psycopg lit PGHOST, PGPORT, PGUSER, PGDATABASE et PGPASSWORD.
     if not os.environ.get("PGDATABASE"):
         raise SystemExit("Définissez PGDATABASE avec le nom de la base du projet.")
-    return psycopg.connect(connect_timeout=5)
+    return psycopg.connect(
+        host=os.environ.get("PGHOST", POSTGRES["host"]),
+        port=os.environ.get("PGPORT", POSTGRES["port"]),
+        connect_timeout=POSTGRES["connect_timeout"],
+    )
 
 
 def import_csv(cursor, table):
-    path = SOURCE_DIR / f"{table}.csv"
+    path = SOURCES[table]
     name = sql.Identifier(SCHEMA, table)
     cursor.execute("SELECT to_regclass(%s)", (f"{SCHEMA}.{table}",))
     if cursor.fetchone()[0] is not None:
@@ -35,7 +39,7 @@ def import_csv(cursor, table):
     # COPY charge les lignes par blocs et conserve les valeurs en texte.
     imported = 0
     with cursor.copy(sql.SQL("COPY {} FROM STDIN").format(name)) as copy:
-        with pd.read_csv(path, dtype=str, keep_default_na=False, chunksize=10_000) as chunks:
+        with pd.read_csv(path, dtype=str, keep_default_na=False, chunksize=POSTGRES["chunk_size"]) as chunks:
             for chunk in chunks:
                 for row in chunk.itertuples(index=False, name=None):
                     copy.write_row(row)
@@ -48,7 +52,7 @@ def import_csv(cursor, table):
 
 def main():
     for table in TABLES:
-        if not (SOURCE_DIR / f"{table}.csv").is_file():
+        if not SOURCES[table].is_file():
             raise SystemExit(f"CSV introuvable : {table}.csv")
 
     # Une transaction charge les deux tables ensemble. Le verrou sérialise les relances.
