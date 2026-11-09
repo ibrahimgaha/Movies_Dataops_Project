@@ -9,8 +9,8 @@ stages:
       size: 34445126
     - path: data/raw/ratings_small.csv
       hash: md5
-      md5: 8864480f98416ccecaf17aa5263bbea1
-      size: 2438266
+      md5: 85ed2b4521d89e796871e8b77a2087bf
+      size: 2438441
     - path: requirements.txt
       hash: md5
       md5: 1c3dbd31b32aa6f6310333d7182e2696
@@ -31,7 +31,7 @@ stages:
     outs:
     - path: data/interim/csv_ingestion.json
       hash: md5
-      md5: 64634be782e8f05129d4fb9835ebb099
+      md5: 20d040e28fecbf58a1861c2991d0fb21
       size: 126
     - path: data/interim/movies_ingested.csv
       hash: md5
@@ -39,8 +39,8 @@ stages:
       size: 34445196
     - path: data/interim/ratings_ingested.csv
       hash: md5
-      md5: ca345f6cdb982baf0ad30a226278c194
-      size: 2338261
+      md5: 2a2bcd88289a70fd8f7e08bd8e62e53b
+      size: 2338429
   csv_validation:
     cmd: python -m src.csv_validation
     deps:
@@ -50,8 +50,8 @@ stages:
       size: 34445196
     - path: data/interim/ratings_ingested.csv
       hash: md5
-      md5: ca345f6cdb982baf0ad30a226278c194
-      size: 2338261
+      md5: 2a2bcd88289a70fd8f7e08bd8e62e53b
+      size: 2338429
     - path: src/csv_ingestion.py
       hash: md5
       md5: 23062ccf2fb1ab311b32f523219b73ab
@@ -86,7 +86,7 @@ stages:
     outs:
     - path: data/interim/csv_validation.json
       hash: md5
-      md5: 3eb1ecda4dd1709240ddd9a200cd04e6
+      md5: fad836979d4bce76f793c7161177cc58
       size: 869
     - path: data/interim/movies_valid.csv
       hash: md5
@@ -94,8 +94,8 @@ stages:
       size: 34588921
     - path: data/interim/ratings_valid.csv
       hash: md5
-      md5: ca345f6cdb982baf0ad30a226278c194
-      size: 2338261
+      md5: 213d28840d4eea8131c1fa20dbd6ac00
+      size: 2338333
   image_preprocessing:
     cmd: python -m src.image_preprocessing
     deps:
@@ -240,11 +240,11 @@ stages:
       size: 212
     - path: data/interim/csv_ingestion.json
       hash: md5
-      md5: 64634be782e8f05129d4fb9835ebb099
+      md5: 20d040e28fecbf58a1861c2991d0fb21
       size: 126
     - path: data/interim/csv_validation.json
       hash: md5
-      md5: 3eb1ecda4dd1709240ddd9a200cd04e6
+      md5: fad836979d4bce76f793c7161177cc58
       size: 869
     - path: data/interim/image_preprocessing.json
       hash: md5
@@ -264,8 +264,8 @@ stages:
       size: 1130903
     - path: data/interim/ratings_valid.csv
       hash: md5
-      md5: ca345f6cdb982baf0ad30a226278c194
-      size: 2338261
+      md5: 213d28840d4eea8131c1fa20dbd6ac00
+      size: 2338333
     - path: src/csv_ingestion.py
       hash: md5
       md5: 23062ccf2fb1ab311b32f523219b73ab
@@ -285,7 +285,7 @@ stages:
     outs:
     - path: data/interim/export.json
       hash: md5
-      md5: 2fedd2cce8f4c6dfadf9ba49b4e76af7
+      md5: 0d11cbfc53d5a542ed8e994dbe61ff36
       size: 437
     - path: data/processed/movies_multimodal.csv
       hash: md5
@@ -297,9 +297,9 @@ stages:
       size: 1130903
     - path: data/processed/ratings_prepared.csv
       hash: md5
-      md5: ca345f6cdb982baf0ad30a226278c194
-      size: 2338261
+      md5: 213d28840d4eea8131c1fa20dbd6ac00
+      size: 2338333
     - path: data/processed/statistics.json
       hash: md5
-      md5: 28f3d84d31d4de60db99788d136bb7cf
+      md5: b6c09ef387cb2f0bca59fb04b6b1fc12
       size: 2182
